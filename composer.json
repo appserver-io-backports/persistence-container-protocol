@@ -1,0 +1,20 @@
+{
+    "name": "techdivision/persistencecontainerprotocol",
+    "type": "package",
+    "description": "Implements the native Persistence-Container protocol.",
+    "homepage": "https://github.com/techdivision/TechDivision_PersistenceContainerProtocol",
+    "license": [ "OSL-3.0" ],
+    "minimum-stability": "dev",
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/techdivision/TechDivision_PersistenceContainerProtocol"
+        }
+    ],
+    "require": {
+        "php" : ">=5.3.0"
+    },
+    "autoload": {
+        "psr-0": { "TechDivision": "src/" }
+    }
+}
