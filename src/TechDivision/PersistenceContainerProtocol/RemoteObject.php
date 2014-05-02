@@ -20,7 +20,7 @@
  * @link      http://www.appserver.io
  */
 
-namespace TechDivision\PersistenceContainerClient\Interfaces;
+namespace TechDivision\PersistenceContainerProtocol;
 
 /**
  * Interface for all remote objects.

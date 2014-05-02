@@ -42,25 +42,32 @@ class ConnectionHandler implements ConnectionHandlerInterface
 {
 
     /**
-     * The server context instance
+     * The server context instance.
      *
      * @var \TechDivision\WebServer\Interfaces\ServerContextInterface
      */
     protected $serverContext;
 
     /**
-     * The connection instance
+     * The connection instance.
      *
      * @var \TechDivision\WebServer\Sockets\SocketInterface
      */
     protected $connection;
 
     /**
-     * The worker instance
+     * The worker instance.
      *
      * @var \TechDivision\WebServer\Interfaces\WorkerInterface
      */
     protected $worker;
+
+    /**
+     * Holds an array of modules to use for connection handler.
+     *
+     * @var array
+     */
+    protected $modules;
 
     /**
      * Inits the connection handler by given context and params
@@ -72,7 +79,7 @@ class ConnectionHandler implements ConnectionHandlerInterface
      */
     public function init(ServerContextInterface $serverContext, array $params = null)
     {
-        
+
         // set server context
         $this->serverContext = $serverContext;
 
@@ -116,7 +123,7 @@ class ConnectionHandler implements ConnectionHandlerInterface
      */
     public function handle(SocketInterface $connection, WorkerInterface $worker)
     {
-
+        
         try {
             
             // add connection ref to self
@@ -126,8 +133,23 @@ class ConnectionHandler implements ConnectionHandlerInterface
             // receive a line from the connection
             $buffer = '';
             while ($line = $connection->readLine()) {
+            
+                // if receive timeout occured
+                if (strlen($line) === 0) {
+                    break;
+                }
+            
+                // append line to buffer
                 $buffer .= $line;
+            
+                // check if data transmission has finished
+                if (false === strpos($buffer, "\r\n")) {
+                    break;
+                }
             }
+            
+            // register the class loader
+            $this->registerClassLoader();
             
             // extract the remote method to process
             $remoteMethod = unserialize(base64_decode($buffer));
@@ -145,7 +167,7 @@ class ConnectionHandler implements ConnectionHandlerInterface
             $application = $this->findApplication($remoteMethod->getAppName());
     
             // create initial context and lookup session bean
-            $instance = $application->lookup($className, $sessionId);
+            $instance = $this->getContainer()->lookup($className, $sessionId, array($application));
     
             // prepare method name and parameters and invoke method
             $methodName = $remoteMethod->getMethodName();
@@ -154,12 +176,14 @@ class ConnectionHandler implements ConnectionHandlerInterface
             // invoke the remote method call on the local instance
             $response = call_user_func_array(array($instance, $methodName), $parameters);
             
+            $this->getContainer()->attach($instance);
+            
         } catch (\Exception $e) {
             $response = $e;
         }
     
         // send the the result back to the client
-        $connection->write(base64_encode(serialize($response)));
+        $connection->write(base64_encode(serialize($response)) . "\r\n");
         
         // finally close connection
         $connection->close();
@@ -223,6 +247,49 @@ class ConnectionHandler implements ConnectionHandlerInterface
     public function getApplications()
     {
         return $this->getContainer()->getApplications();
+    }
+
+    /**
+     * Injects all needed modules for connection handler to process
+     *
+     * @param array $modules An array of Modules
+     *
+     * @return void
+     */
+    public function injectModules($modules)
+    {
+        $this->modules = $modules;
+    }
+
+    /**
+     * Returns all needed modules as array for connection handler to process
+     *
+     * @return array An array of Modules
+     */
+    public function getModules()
+    {
+        return $this->modules;
+    }
+
+    /**
+     * Returns the inital context instance.
+     *
+     * @return \TechDivision\ApplicationServer\InitialContext The initial context instance
+     */
+    protected function getInitialContext()
+    {
+        return $this->getContainer()->getInitialContext();
+    }
+
+    /**
+     * Register the class loader again, because in a thread the context
+     * lost all class loader information.
+     *
+     * @return void
+     */
+    protected function registerClassLoader()
+    {
+        $this->getInitialContext()->getClassLoader()->register(true, true);
     }
 
     /**
