@@ -129,6 +129,8 @@ class ConnectionHandler implements ConnectionHandlerInterface
             // add connection ref to self
             $this->connection = $connection;
             $this->worker = $worker;
+          
+            $container = $this->getContainer();
             
             // receive a line from the connection
             $buffer = '';
@@ -165,9 +167,10 @@ class ConnectionHandler implements ConnectionHandlerInterface
     
             // Find the application for the given name coming from remote
             $application = $this->findApplication($remoteMethod->getAppName());
-    
-            // create initial context and lookup session bean
-            $instance = $this->getContainer()->lookup($className, $sessionId, array($application));
+            
+            // lock the container and lookup the bean instance
+            $container->lock();
+            $instance = $container->lookup($className, $sessionId, array($application));
     
             // prepare method name and parameters and invoke method
             $methodName = $remoteMethod->getMethodName();
@@ -176,9 +179,12 @@ class ConnectionHandler implements ConnectionHandlerInterface
             // invoke the remote method call on the local instance
             $response = call_user_func_array(array($instance, $methodName), $parameters);
             
-            $this->getContainer()->attach($instance);
+            // reattach the bean instance in the container and unlock it
+            $container->attach($instance, $sessionId);
+            $container->unlock();
             
         } catch (\Exception $e) {
+            $container->unlock;
             $response = $e;
         }
     
