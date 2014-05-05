@@ -169,7 +169,6 @@ class ConnectionHandler implements ConnectionHandlerInterface
             $application = $this->findApplication($remoteMethod->getAppName());
             
             // lock the container and lookup the bean instance
-            $container->lock();
             $instance = $container->lookup($className, $sessionId, array($application));
     
             // prepare method name and parameters and invoke method
@@ -181,10 +180,8 @@ class ConnectionHandler implements ConnectionHandlerInterface
             
             // reattach the bean instance in the container and unlock it
             $container->attach($instance, $sessionId);
-            $container->unlock();
             
         } catch (\Exception $e) {
-            $container->unlock;
             $response = $e;
         }
     
