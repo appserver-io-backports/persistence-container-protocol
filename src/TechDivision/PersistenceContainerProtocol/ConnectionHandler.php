@@ -10,7 +10,7 @@
  * http://opensource.org/licenses/osl-3.0.php
  *
  * PHP version 5
- * 
+ *
  * @category  Library
  * @package   TechDivision_PersistenceContainerProtocol
  * @author    Tim Wagner <tw@techdivision.com>
@@ -28,8 +28,8 @@ use TechDivision\WebServer\Interfaces\WorkerInterface;
 use TechDivision\WebServer\Sockets\SocketInterface;
 
 /**
- * This is a connection handler to handle native persistence container requests. 
- * 
+ * This is a connection handler to handle native persistence container requests.
+ *
  * @category  Library
  * @package   TechDivision_PersistenceContainerProtocol
  * @author    Tim Wagner <tw@techdivision.com>
@@ -70,6 +70,13 @@ class ConnectionHandler implements ConnectionHandlerInterface
     protected $modules;
 
     /**
+     * The persistence container parser instance.
+     *
+     * @var \TechDivision\PersistenceContainerProtocol\RemoteMethodCallParser
+     */
+    protected $parser;
+
+    /**
      * Inits the connection handler by given context and params
      *
      * @param \TechDivision\WebServer\Interfaces\ServerContextInterface $serverContext The servers context
@@ -82,6 +89,9 @@ class ConnectionHandler implements ConnectionHandlerInterface
 
         // set server context
         $this->serverContext = $serverContext;
+
+        // initialize the remote method call parser
+        $this->parser = new RemoteMethodCallParser();
 
         // register shutdown handler
         register_shutdown_function(array(&$this, "shutdown"));
@@ -97,14 +107,14 @@ class ConnectionHandler implements ConnectionHandlerInterface
         // get refs to local vars
         $connection = $this->getConnection();
         $worker = $this->getWorker();
-    
+
         // check if connections is still alive
         if ($connection) {
-    
+
             // close client connection
             $this->getConnection()->close();
         }
-    
+
         // check if worker is given
         if ($worker) {
             // call shutdown process on worker to respawn
@@ -123,71 +133,55 @@ class ConnectionHandler implements ConnectionHandlerInterface
      */
     public function handle(SocketInterface $connection, WorkerInterface $worker)
     {
-        
+
         try {
-            
+
             // add connection ref to self
             $this->connection = $connection;
             $this->worker = $worker;
-          
+
+            // load the container instance
             $container = $this->getContainer();
-            
-            // receive a line from the connection
-            $buffer = '';
-            while ($line = $connection->readLine()) {
-            
-                // if receive timeout occured
-                if (strlen($line) === 0) {
-                    break;
-                }
-            
-                // append line to buffer
-                $buffer .= $line;
-            
-                // check if data transmission has finished
-                if (false === strpos($buffer, "\r\n")) {
-                    break;
-                }
-            }
-            
+			$parser = $this->getParser();
+
             // register the class loader
             $this->registerClassLoader();
-            
-            // extract the remote method to process
-            $remoteMethod = unserialize(base64_decode($buffer));
 
-            // check if a remote method has been passed
-            if (!$remoteMethod instanceof RemoteMethod) { // if not, throw an exception immediately
-                throw new RemoteMethodCallException('Found invalid remote method call');
-            }
-            
+            // read the remote method from the connection
+            $contentLength = $parser->parseHeader($connection->readLine());
+            $remoteMethod = $parser->parseBody($connection, $contentLength);
+
             // load class name and session ID from remote method
             $className = $remoteMethod->getClassName();
             $sessionId = $remoteMethod->getSessionId();
-    
+
             // Find the application for the given name coming from remote
             $application = $this->findApplication($remoteMethod->getAppName());
-            
+
             // lock the container and lookup the bean instance
             $instance = $container->lookup($className, $sessionId, array($application));
-    
+
             // prepare method name and parameters and invoke method
             $methodName = $remoteMethod->getMethodName();
             $parameters = $remoteMethod->getParameters();
-    
+
             // invoke the remote method call on the local instance
             $response = call_user_func_array(array($instance, $methodName), $parameters);
-            
+
             // reattach the bean instance in the container and unlock it
             $container->attach($instance, $sessionId);
-            
+
         } catch (\Exception $e) {
             $response = $e;
         }
-    
+
+        // serialize the remote method and write it to the socket
+        $packed = RemoteMethodProtocol::pack($response);
+
         // send the the result back to the client
-        $connection->write(base64_encode(serialize($response)) . "\r\n");
-        
+        $connection->write(RemoteMethodProtocol::prepareHeaderResult($packed));
+        $connection->write($packed);
+
         // finally close connection
         $connection->close();
     }
@@ -221,6 +215,16 @@ class ConnectionHandler implements ConnectionHandlerInterface
     {
         return $this->worker;
     }
+
+    /**
+     * Returns the parser to process the remote method call.
+     *
+     * @return \TechDivision\PersistenceContainerProtocol\RemoteMethodCallParser The parser instance
+     */
+	public function getParser()
+	{
+		return $this->parser;
+	}
 
     /**
      * Returns the servers configuration
@@ -305,7 +309,7 @@ class ConnectionHandler implements ConnectionHandlerInterface
      */
     public function findApplication($appName)
     {
-        
+
         // iterate over all applications and check if the application name contains the app name
         foreach ($this->getApplications() as $name => $application) { // do we have an application like this?
             if ($name === $appName) {
@@ -314,6 +318,6 @@ class ConnectionHandler implements ConnectionHandlerInterface
         }
 
         // if not throw an exception
-        throw new RemoteMethodCallException("Can\'t find application for '$appName'");
+        throw new RemoteMethodCallException("Can't find application for '$appName'");
     }
 }
