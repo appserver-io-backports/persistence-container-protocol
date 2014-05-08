@@ -10,7 +10,7 @@
  * http://opensource.org/licenses/osl-3.0.php
  *
  * PHP version 5
- * 
+ *
  * @category  Library
  * @package   TechDivision_PersistenceContainerProtocol
  * @author    Tim Wagner <tw@techdivision.com>
@@ -28,8 +28,8 @@ use TechDivision\WebServer\Interfaces\WorkerInterface;
 use TechDivision\WebServer\Sockets\SocketInterface;
 
 /**
- * This is a connection handler to handle native persistence container requests. 
- * 
+ * This is a connection handler to handle native persistence container requests.
+ *
  * @category  Library
  * @package   TechDivision_PersistenceContainerProtocol
  * @author    Tim Wagner <tw@techdivision.com>
@@ -42,25 +42,39 @@ class ConnectionHandler implements ConnectionHandlerInterface
 {
 
     /**
-     * The server context instance
+     * The server context instance.
      *
      * @var \TechDivision\WebServer\Interfaces\ServerContextInterface
      */
     protected $serverContext;
 
     /**
-     * The connection instance
+     * The connection instance.
      *
      * @var \TechDivision\WebServer\Sockets\SocketInterface
      */
     protected $connection;
 
     /**
-     * The worker instance
+     * The worker instance.
      *
      * @var \TechDivision\WebServer\Interfaces\WorkerInterface
      */
     protected $worker;
+
+    /**
+     * Holds an array of modules to use for connection handler.
+     *
+     * @var array
+     */
+    protected $modules;
+
+    /**
+     * The persistence container parser instance.
+     *
+     * @var \TechDivision\PersistenceContainerProtocol\RemoteMethodCallParser
+     */
+    protected $parser;
 
     /**
      * Inits the connection handler by given context and params
@@ -72,9 +86,12 @@ class ConnectionHandler implements ConnectionHandlerInterface
      */
     public function init(ServerContextInterface $serverContext, array $params = null)
     {
-        
+
         // set server context
         $this->serverContext = $serverContext;
+
+        // initialize the remote method call parser
+        $this->parser = new RemoteMethodCallParser();
 
         // register shutdown handler
         register_shutdown_function(array(&$this, "shutdown"));
@@ -90,14 +107,14 @@ class ConnectionHandler implements ConnectionHandlerInterface
         // get refs to local vars
         $connection = $this->getConnection();
         $worker = $this->getWorker();
-    
+
         // check if connections is still alive
         if ($connection) {
-    
+
             // close client connection
             $this->getConnection()->close();
         }
-    
+
         // check if worker is given
         if ($worker) {
             // call shutdown process on worker to respawn
@@ -118,49 +135,53 @@ class ConnectionHandler implements ConnectionHandlerInterface
     {
 
         try {
-            
+
             // add connection ref to self
             $this->connection = $connection;
             $this->worker = $worker;
-            
-            // receive a line from the connection
-            $buffer = '';
-            while ($line = $connection->readLine()) {
-                $buffer .= $line;
-            }
-            
-            // extract the remote method to process
-            $remoteMethod = unserialize(base64_decode($buffer));
 
-            // check if a remote method has been passed
-            if (!$remoteMethod instanceof RemoteMethod) { // if not, throw an exception immediately
-                throw new RemoteMethodCallException('Found invalid remote method call');
-            }
-            
+            // load the container instance
+            $container = $this->getContainer();
+			$parser = $this->getParser();
+
+            // register the class loader
+            $this->registerClassLoader();
+
+            // read the remote method from the connection
+            $contentLength = $parser->parseHeader($connection->readLine());
+            $remoteMethod = $parser->parseBody($connection, $contentLength);
+
             // load class name and session ID from remote method
             $className = $remoteMethod->getClassName();
             $sessionId = $remoteMethod->getSessionId();
-    
+
             // Find the application for the given name coming from remote
             $application = $this->findApplication($remoteMethod->getAppName());
-    
-            // create initial context and lookup session bean
-            $instance = $application->lookup($className, $sessionId);
-    
+
+            // lock the container and lookup the bean instance
+            $instance = $container->lookup($className, $sessionId, array($application));
+
             // prepare method name and parameters and invoke method
             $methodName = $remoteMethod->getMethodName();
             $parameters = $remoteMethod->getParameters();
-    
+
             // invoke the remote method call on the local instance
             $response = call_user_func_array(array($instance, $methodName), $parameters);
-            
+
+            // reattach the bean instance in the container and unlock it
+            $container->attach($instance, $sessionId);
+
         } catch (\Exception $e) {
             $response = $e;
         }
-    
+
+        // serialize the remote method and write it to the socket
+        $packed = RemoteMethodProtocol::pack($response);
+
         // send the the result back to the client
-        $connection->write(base64_encode(serialize($response)));
-        
+        $connection->write(RemoteMethodProtocol::prepareHeaderResult($packed));
+        $connection->write($packed);
+
         // finally close connection
         $connection->close();
     }
@@ -196,6 +217,16 @@ class ConnectionHandler implements ConnectionHandlerInterface
     }
 
     /**
+     * Returns the parser to process the remote method call.
+     *
+     * @return \TechDivision\PersistenceContainerProtocol\RemoteMethodCallParser The parser instance
+     */
+	public function getParser()
+	{
+		return $this->parser;
+	}
+
+    /**
      * Returns the servers configuration
      *
      * @return \TechDivision\WebServer\Interfaces\ServerConfigurationInterface
@@ -226,6 +257,49 @@ class ConnectionHandler implements ConnectionHandlerInterface
     }
 
     /**
+     * Injects all needed modules for connection handler to process
+     *
+     * @param array $modules An array of Modules
+     *
+     * @return void
+     */
+    public function injectModules($modules)
+    {
+        $this->modules = $modules;
+    }
+
+    /**
+     * Returns all needed modules as array for connection handler to process
+     *
+     * @return array An array of Modules
+     */
+    public function getModules()
+    {
+        return $this->modules;
+    }
+
+    /**
+     * Returns the inital context instance.
+     *
+     * @return \TechDivision\ApplicationServer\InitialContext The initial context instance
+     */
+    protected function getInitialContext()
+    {
+        return $this->getContainer()->getInitialContext();
+    }
+
+    /**
+     * Register the class loader again, because in a thread the context
+     * lost all class loader information.
+     *
+     * @return void
+     */
+    protected function registerClassLoader()
+    {
+        $this->getInitialContext()->getClassLoader()->register(true, true);
+    }
+
+    /**
      * Tries to find and return the application for the passed application name.
      *
      * @param string $appName The name of the application to find and return the application instance
@@ -235,7 +309,7 @@ class ConnectionHandler implements ConnectionHandlerInterface
      */
     public function findApplication($appName)
     {
-        
+
         // iterate over all applications and check if the application name contains the app name
         foreach ($this->getApplications() as $name => $application) { // do we have an application like this?
             if ($name === $appName) {
@@ -244,6 +318,6 @@ class ConnectionHandler implements ConnectionHandlerInterface
         }
 
         // if not throw an exception
-        throw new RemoteMethodCallException("Can\'t find application for '$appName'");
+        throw new RemoteMethodCallException("Can't find application for '$appName'");
     }
 }
