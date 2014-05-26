@@ -22,7 +22,7 @@
 
 namespace TechDivision\PersistenceContainerProtocol;
 
-use TechDivision\WebServer\Sockets\SocketInterface;
+use TechDivision\Server\Sockets\SocketInterface;
 
 /**
  * This is a parser for a native persistence container remote method call.
