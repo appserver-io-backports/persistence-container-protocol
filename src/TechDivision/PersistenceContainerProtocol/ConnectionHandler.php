@@ -142,7 +142,7 @@ class ConnectionHandler implements ConnectionHandlerInterface
 
             // load the container instance
             $container = $this->getContainer();
-			$parser = $this->getParser();
+            $parser = $this->getParser();
 
             // register the class loader
             $this->registerClassLoader();
@@ -221,10 +221,10 @@ class ConnectionHandler implements ConnectionHandlerInterface
      *
      * @return \TechDivision\PersistenceContainerProtocol\RemoteMethodCallParser The parser instance
      */
-	public function getParser()
-	{
-		return $this->parser;
-	}
+    public function getParser()
+    {
+        return $this->parser;
+    }
 
     /**
      * Returns the servers configuration

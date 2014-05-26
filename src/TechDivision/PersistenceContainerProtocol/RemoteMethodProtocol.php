@@ -46,18 +46,18 @@ namespace TechDivision\PersistenceContainerProtocol;
 class RemoteMethodProtocol
 {
 
-	/**
-	 * This is the line ending we use.
-	 *
-	 * @var string
-	 */
-	const EOL = "\r\n";
+    /**
+     * This is the line ending we use.
+     *
+     * @var string
+     */
+    const EOL = "\r\n";
 
-	/**
-	 * Protocol identifier.
-	 *
-	 * @var string
-	 */
+    /**
+     * Protocol identifier.
+     *
+     * @var string
+     */
     const PROTOCOL = 'RMC';
 
     /**
@@ -90,7 +90,7 @@ class RemoteMethodProtocol
      */
     public static function prepareHeaderInvoke($string)
     {
-    	return RemoteMethodProtocol::prepareHeader(RemoteMethodProtocol::REMOTE_METHOD_INVOKE, $string);
+        return RemoteMethodProtocol::prepareHeader(RemoteMethodProtocol::REMOTE_METHOD_INVOKE, $string);
     }
 
     /**
@@ -102,7 +102,7 @@ class RemoteMethodProtocol
      */
     public static function prepareHeaderResult($string)
     {
-    	return RemoteMethodProtocol::prepareHeader(RemoteMethodProtocol::REMOTE_METHOD_RESULT, $string);
+        return RemoteMethodProtocol::prepareHeader(RemoteMethodProtocol::REMOTE_METHOD_RESULT, $string);
     }
 
     /**
@@ -115,13 +115,13 @@ class RemoteMethodProtocol
      */
     protected static function prepareHeader($method, $string)
     {
-    	// prepare the header elements
-    	$protocol = RemoteMethodProtocol::PROTOCOL;
-    	$version = RemoteMethodProtocol::VERSION;
-    	$contentLength = strlen($string);
+        // prepare the header elements
+        $protocol = RemoteMethodProtocol::PROTOCOL;
+        $version = RemoteMethodProtocol::VERSION;
+        $contentLength = strlen($string);
 
         // concatenate the header string
-    	return "$method $contentLength $protocol/$version" . RemoteMethodProtocol::EOL;
+        return "$method $contentLength $protocol/$version" . RemoteMethodProtocol::EOL;
     }
 
     /**
