@@ -59,7 +59,7 @@ class RemoteMethodCallParser
     public function parseHeader($line)
     {
 
-    	// parse the header line with
+        // parse the header line with
         list ($remoteMethod, $contentLength, $protocolVersion) = explode(' ', trim($line));
 
         // parse protocol and version
@@ -73,17 +73,17 @@ class RemoteMethodCallParser
         // check the request method
         switch ($remoteMethod) {
 
-        	case RemoteMethodProtocol::REMOTE_METHOD_INVOKE:
+            case RemoteMethodProtocol::REMOTE_METHOD_INVOKE:
                 return (integer) $contentLength;
-        	    break;
+                break;
 
-        	case RemoteMethodProtocol::REMOTE_METHOD_RESULT:
+            case RemoteMethodProtocol::REMOTE_METHOD_RESULT:
                 return (integer) $contentLength;
-        	    break;
+                break;
 
-        	default:
-        	    throw new RemoteMethodCallException(sprintf('Found invalid remote method %s', $remoteMethod));
-        	    break;
+            default:
+                throw new RemoteMethodCallException(sprintf('Found invalid remote method %s', $remoteMethod));
+                break;
 
         }
     }
@@ -92,14 +92,14 @@ class RemoteMethodCallParser
      * Parses the request body and tries to unpack the remote method
      * instance from it.
      *
-     * @param TechDivision\WebServer\Sockets\SocketInterface $connectionResource The package remote method instance
-     * @param integer 										 $contentLength 	 The content lenght to read
+     * @param TechDivision\Server\Sockets\SocketInterface $connection    The package remote method instance
+     * @param integer                                     $contentLength The content lenght to read
      *
      * @return object The unpacked remote method object/result
      */
     public function parseBody(SocketInterface $connection, $contentLength)
     {
-    	$rawResponse = stream_get_contents($connection->getConnectionResource(), $contentLength);
+        $rawResponse = stream_get_contents($connection->getConnectionResource(), $contentLength);
         return RemoteMethodProtocol::unpack($rawResponse);
     }
 }
