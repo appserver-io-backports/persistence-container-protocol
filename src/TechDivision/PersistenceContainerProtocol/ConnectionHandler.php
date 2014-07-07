@@ -24,6 +24,7 @@ namespace TechDivision\PersistenceContainerProtocol;
 
 use TechDivision\Server\Interfaces\ConnectionHandlerInterface;
 use TechDivision\Server\Interfaces\ServerContextInterface;
+use TechDivision\Server\Interfaces\RequestContextInterface;
 use TechDivision\Server\Interfaces\WorkerInterface;
 use TechDivision\Server\Sockets\SocketInterface;
 
@@ -47,6 +48,13 @@ class ConnectionHandler implements ConnectionHandlerInterface
      * @var \TechDivision\Server\Interfaces\ServerContextInterface
      */
     protected $serverContext;
+
+    /**
+     * The request's context instance.
+     *
+     * @var \TechDivision\Server\Interfaces\RequestContextInterface
+     */
+    protected $requestContext;
 
     /**
      * The connection instance.
@@ -197,6 +205,16 @@ class ConnectionHandler implements ConnectionHandlerInterface
     }
 
     /**
+     * Returns the request's context instance.
+     *
+     * @return \TechDivision\Server\Interfaces\RequestContextInterface
+     */
+    public function getRequestContext()
+    {
+        return $this->requestContext;
+    }
+
+    /**
      * Returns the connection used to handle with
      *
      * @return \TechDivision\Server\Sockets\SocketInterface
@@ -266,6 +284,18 @@ class ConnectionHandler implements ConnectionHandlerInterface
     public function injectModules($modules)
     {
         $this->modules = $modules;
+    }
+
+    /**
+     * Injects the request context.
+     *
+     * @param \TechDivision\Server\Interfaces\RequestContextInterface $requestContext The request's context instance
+     *
+     * @return void
+     */
+    public function injectRequestContext(RequestContextInterface $requestContext)
+    {
+        $this->requestContext = $requestContext;
     }
 
     /**
