@@ -92,8 +92,8 @@ class RemoteMethodCallParser
      * Parses the request body and tries to unpack the remote method
      * instance from it.
      *
-     * @param TechDivision\Server\Sockets\SocketInterface $connection    The package remote method instance
-     * @param integer                                     $contentLength The content lenght to read
+     * @param \TechDivision\Server\Sockets\SocketInterface $connection    The package remote method instance
+     * @param integer                                      $contentLength The content lenght to read
      *
      * @return object The unpacked remote method object/result
      */
