@@ -1,3 +1,13 @@
+# Version 0.2.3
+
+## Bugfixes
+
+* None
+
+## Features
+
+* Remove BeanContext::getBeanAnnotation() method => method has been moved to BeanUtils
+
 # Version 0.2.2
 
 ## Bugfixes

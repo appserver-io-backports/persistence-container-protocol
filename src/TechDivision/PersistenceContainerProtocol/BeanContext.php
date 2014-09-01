@@ -76,17 +76,6 @@ interface BeanContext extends ManagerInterface
     public function attach($instance, $sessionId = null);
 
     /**
-     * Returns the bean annotation for the passed reflection class, that can be
-     * one of Entity, Stateful, Stateless, Singleton.
-     *
-     * @param \ReflectionClass $reflectionClass The class to return the annotation for
-     *
-     * @throws \Exception Is thrown if the class has NO bean annotation
-     * @return string The found bean annotation
-     */
-    public function getBeanAnnotation(\ReflectionClass $reflectionClass);
-
-    /**
      * Returns a reflection class intance for the passed class name.
      *
      * @param string $className The class name to return the reflection instance for
