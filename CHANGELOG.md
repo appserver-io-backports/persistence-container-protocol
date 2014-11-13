@@ -1,3 +1,13 @@
+# Version 0.2.5
+
+## Bugfixes
+
+* None
+
+## Features
+
+* Add BeanContext::lookup() method
+
 # Version 0.2.4
 
 ## Bugfixes

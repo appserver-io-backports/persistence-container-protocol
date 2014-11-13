@@ -65,6 +65,22 @@ interface BeanContext extends ManagerInterface
     public function locate(RemoteMethod $remoteMethod, array $args = array());
 
     /**
+     * Runs a lookup for the session bean with the passed class name and
+     * session ID.
+     *
+     * If the passed class name is a session bean an instance
+     * will be returned.
+     *
+     * @param string $className The name of the session bean's class
+     * @param string $sessionId The session ID
+     * @param array  $args      The arguments passed to the session beans constructor
+     *
+     * @return object The requested bean instance
+     * @throws \TechDivision\PersistenceContainer\InvalidBeanTypeException Is thrown if passed class name is no session bean or is a entity bean (not implmented yet)
+     */
+    public function lookup($className, $sessionId = null, array $args = array());
+
+    /**
      * Attaches the passed bean, depending on it's type to the container.
      *
      * @param object $instance  The bean instance to attach
