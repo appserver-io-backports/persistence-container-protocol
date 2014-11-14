@@ -1,3 +1,13 @@
+# Version 0.2.6
+
+## Bugfixes
+
+* None
+
+## Features
+
+* Add session-ID, necessary to create new SFBs, to BeanContext::newInstance() method
+
 # Version 0.2.5
 
 ## Bugfixes
