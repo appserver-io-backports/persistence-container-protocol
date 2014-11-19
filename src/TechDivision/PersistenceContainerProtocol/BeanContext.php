@@ -44,7 +44,7 @@ interface BeanContext extends ManagerInterface
      *
      * @var string
      */
-    const IDENTIFIER = 'TechDivision\PersistenceContainerProtocol\BeanContext';
+    const IDENTIFIER = 'BeanContext';
 
     /**
      * Returns the absolute path to the web application.
